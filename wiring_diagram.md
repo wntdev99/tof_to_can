@@ -11,7 +11,7 @@ flowchart LR
             CTRL_PINS["센서 제어\nGPIO10 L7CX CS/LPn\nGPIO11 L8CX CS/LPn\nGPIO12 TMF EN"]
             SPI_PINS["SPI1\nGPIO8  MISO\nGPIO14 SCK\nGPIO15 MOSI\nGPIO19 CS\nGPIO22 INT"]
         end
-        MCP["MCP25625\nCAN Controller + Transceiver\n12MHz XTAL"]
+        MCP["MCP25625\nCAN Controller + Transceiver\n16MHz XTAL"]
         SPI_PINS <-->|SPI 10MHz| MCP
     end
 
@@ -93,4 +93,4 @@ flowchart LR
 - VL53L5CX 와 VL53L4CD 는 제어 핀 미연결 → 동시 연결 불가 (I2C 0x52 충돌)
 - STEMMA QT 체인 순서: L5CX ↔ L4CD ↔ L7CX ↔ L8CX ↔ TMF8828
 - FEATHER 내부 SPI 배선은 PCB에 고정 (외부 배선 불필요)
-- MCP25625 크리스탈: 12MHz → CAN 비트레이트 설정 시 `MCP_12MHZ` 사용
+- MCP25625 크리스탈: 16MHz → CAN 비트레이트 설정 시 `MCP_CNF*_500K_16MHZ` 사용
