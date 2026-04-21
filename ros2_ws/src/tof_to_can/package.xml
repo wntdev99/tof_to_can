@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>tof_to_can</name>
+  <version>0.1.0</version>
+  <description>
+    ToF-to-CAN 시스템의 메타패키지.
+    실제 구현은 tof_can_bridge (드라이버) 와 tof_bringup (실행 구성) 에 있으며
+    여기서는 두 패키지를 한 번에 설치/의존 가능하도록 묶는다.
+  </description>
+  <maintainer email="jeongmin.choi@wattrobotics.ai">jeongmin.choi</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>tof_can_bridge</exec_depend>
+  <exec_depend>tof_bringup</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
