@@ -89,6 +89,7 @@ target_compile_definitions(tof_to_can PRIVATE
     VL53L5CX_NB_TARGET_PER_ZONE=1
     VL53L7CX_NB_TARGET_PER_ZONE=1
     VL53L8CX_NB_TARGET_PER_ZONE=1
+    L5CX_DEBUG_SERIAL   # 시리얼로 8x8 거리 맵 출력 — 검증 완료 후 삭제
 )
 
 target_link_libraries(tof_to_can

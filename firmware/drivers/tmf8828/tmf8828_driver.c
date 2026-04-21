@@ -9,21 +9,24 @@
 
 /* ── I2C 헬퍼 (8-bit 레지스터 주소) ─────────────────────── */
 
+#define TMF_TIMEOUT_US  5000u
+
 static int tmf_wr(uint8_t reg, uint8_t val) {
     uint8_t buf[2] = { reg, val };
-    return i2c_write_blocking(SENSOR_I2C_PORT, TMF8828_I2C_ADDR, buf, 2, false);
+    return i2c_write_timeout_us(SENSOR_I2C_PORT, TMF8828_I2C_ADDR, buf, 2, false, TMF_TIMEOUT_US);
 }
 
 static int tmf_rd(uint8_t reg, uint8_t *val) {
-    if (i2c_write_blocking(SENSOR_I2C_PORT, TMF8828_I2C_ADDR, &reg, 1, true) != 1)
+    if (i2c_write_timeout_us(SENSOR_I2C_PORT, TMF8828_I2C_ADDR, &reg, 1, true, TMF_TIMEOUT_US) != 1)
         return -1;
-    return i2c_read_blocking(SENSOR_I2C_PORT, TMF8828_I2C_ADDR, val, 1, false);
+    return i2c_read_timeout_us(SENSOR_I2C_PORT, TMF8828_I2C_ADDR, val, 1, false, TMF_TIMEOUT_US);
 }
 
 static int tmf_rd_burst(uint8_t reg, uint8_t *buf, uint32_t len) {
-    if (i2c_write_blocking(SENSOR_I2C_PORT, TMF8828_I2C_ADDR, &reg, 1, true) != 1)
+    if (i2c_write_timeout_us(SENSOR_I2C_PORT, TMF8828_I2C_ADDR, &reg, 1, true, TMF_TIMEOUT_US) != 1)
         return -1;
-    return i2c_read_blocking(SENSOR_I2C_PORT, TMF8828_I2C_ADDR, buf, len, false);
+    return i2c_read_timeout_us(SENSOR_I2C_PORT, TMF8828_I2C_ADDR, buf, len, false,
+                                (uint32_t)(len) * 30u + TMF_TIMEOUT_US);
 }
 
 /* ── 초기화 ──────────────────────────────────────────────── */

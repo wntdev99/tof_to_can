@@ -15,8 +15,14 @@ bool vl53l4cd_drv_init(VL53L4CD_Drv *drv, uint8_t i2c_addr8,
 
     Dev_t dev = &_platform;
 
-    if (VL53L4CD_SensorInit(dev)) {
-        printf("[L4CD] init failed (0x%02X)\n", i2c_addr8);
+    /* 부팅 상태 선행 확인 (0xAA: sentinel — 읽기 실패 시 그대로 남음) */
+    uint8_t boot_st = 0xAA;
+    uint8_t rd_err  = VL53L4CD_RdByte(dev, 0x00E5, &boot_st);
+    printf("[L4CD] rd_err=%d boot_status=0x%02X\n", rd_err, boot_st);
+
+    uint8_t st = VL53L4CD_SensorInit(dev);
+    if (st) {
+        printf("[L4CD] init failed err=0x%02X @ 0x%02X\n", st, i2c_addr8);
         return false;
     }
     if (VL53L4CD_SetRangeTiming(dev, timing_budget_ms, inter_meas_ms)) {
