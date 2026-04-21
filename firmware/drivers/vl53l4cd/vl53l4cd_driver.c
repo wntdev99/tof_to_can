@@ -69,6 +69,11 @@ bool vl53l4cd_drv_poll_and_push(VL53L4CD_Drv *drv, ring_buffer_t *rb) {
 
     VL53L4CD_ClearInterrupt(&_platform);
 
+#ifdef L4CD_DEBUG_SERIAL
+    printf("[L4CD] dist=%u mm  status=0x%02X\n",
+           (unsigned)result.distance_mm, (unsigned)result.range_status);
+#endif
+
     can_pack_single_zone(CAN_ID_L4CD_BASE,
                          result.distance_mm,
                          result.range_status, rb);

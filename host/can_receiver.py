@@ -44,7 +44,7 @@ def decode_single_zone(data: bytes) -> dict:
     """VL53L4CD: [dist_lo, dist_hi, status, ...]"""
     dist_mm = struct.unpack_from("<H", data, 0)[0]
     status  = data[2]
-    return {"distance_mm": dist_mm, "status": status}
+    return {"distance_mm": dist_mm, "status": status, "zones": 1}
 
 
 # ── 멀티프레임 조립기 ──────────────────────────────────────
