@@ -42,8 +42,25 @@ bool tmf8828_drv_init(TMF8828_Drv *drv) {
     tmf_wr(TMF8828_REG_ENABLE, 0x01);
     sleep_ms(5);
 
-    /* Measurement App 로딩 대기 (최대 200ms) */
+    /* POR 직후 APPID 는 0x80 (ROM bootloader). 측정 앱 (APPID=0x03)
+     * 으로 전환하려면 bootloader 에 REMAP_RESET 명령을 보내야 함.
+     *
+     * TMF882X bootloader frame 포맷 (BL_CMD_STAT=0x08 시작):
+     *   [ CMD_ID, SIZE, DATA..., CSUM ]
+     *   CSUM = ~(sum(CMD_ID + SIZE + DATA)) & 0xFF
+     *
+     * REMAP_RESET:
+     *   CMD_ID=0x11, SIZE=0x00, no DATA, CSUM=~0x11=0xEE                    */
     uint8_t appid = 0;
+    if (tmf_rd(TMF8828_REG_APPID, &appid) > 0 &&
+        appid == TMF8828_APPID_BOOTLOADER) {
+        uint8_t remap_reset[4] = { 0x08, 0x11, 0x00, 0xEE };
+        i2c_write_timeout_us(SENSOR_I2C_PORT, TMF8828_I2C_ADDR,
+                              remap_reset, 4, false, TMF_TIMEOUT_US);
+        sleep_ms(3);
+    }
+
+    /* Measurement App 전환 대기 (최대 200 ms) */
     for (int i = 0; i < 20; i++) {
         tmf_rd(TMF8828_REG_APPID, &appid);
         if (appid == TMF8828_APPID_MEASUREMENT)
@@ -57,7 +74,7 @@ bool tmf8828_drv_init(TMF8828_Drv *drv) {
     }
 
     drv->initialized = true;
-    printf("[TMF8828] init OK\n");
+    printf("[TMF8828] init OK (APPID=0x%02X)\n", appid);
     return true;
 }
 
