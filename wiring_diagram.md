@@ -96,14 +96,29 @@ flowchart LR
 
 ## 런타임 핫플러그 시퀀스 (2 초 주기)
 
+모든 slot 이 present && initialized 가 될 때까지 다음을 순서대로 시도한다.
+어떤 순서로 꽂아도 최종적으로 모든 센서가 각자 할당 주소에 편입된다.
+
 ```
-1. 0x52 probe
-   ├─ 응답 없음 → skip
-   └─ 응답 있음 → reg[0x010F] 읽기
-       ├─ 0xEB → L4CD 등록 + drv_init(0x52→0x54)
-       ├─ 그 외 → 경고, 등록 안 함 (오삽입 보호)
-       └─ read 실패 → 부팅 중으로 간주, 다음 cycle 재시도
-2. drv_init 실패 시 slot 롤백 → 다음 2 초에 재시도
+1. TMF8828 @ 0x41 (독립)
+   └─ i2c_probe(0x41) 성공 && !present → 등록 + drv_init
+
+2. L4CD @ 0x52 (0x52 점유 여부 분기의 기준)
+   └─ i2c_probe(0x52) 성공 && !present
+       ├─ reg[0x010F] == 0xEB → L4CD 등록 + drv_init(0x52→0x54)
+       ├─ 그 외       → 경고 (오삽입 보호)
+       └─ read 실패  → 부팅 중 → 다음 cycle 재시도
+       (어느 경우든 0x52 가 점유 중이므로 L7/L8 단계는 스킵)
+
+3. L7CX (0x52 비어있을 때만 — 2 번이 skip/성공한 뒤)
+   └─ !present → LPn=HIGH, 10 ms 대기, probe(0x52)
+       ├─ 응답 있음 → 0x56 으로 이동 + 등록
+       └─ 응답 없음 → LPn=LOW (격리 복원)
+
+4. L8CX — L7CX 와 동일 패턴 (0x58 로 이동)
+
+5. 신규 등록된 slot 에 한해 drv_init 수행.
+   실패 시 slot 롤백 → 다음 2 초에 재시도.
 ```
 
 ## 주의사항

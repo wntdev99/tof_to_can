@@ -70,7 +70,9 @@ static void init_l4cd_if_present(void) {
     }
 }
 
-/* ── 나머지 센서 드라이버 초기화 (phase2 이후) — L5CX/L4CD 는 제외 */
+/* ── 나머지 센서 드라이버 초기화 (phase2 이후 + 핫플러그 감지 직후) —
+ *   L5CX/L4CD 는 전용 헬퍼가 처리. 이 함수는 멱등 (present && !initialized
+ *   슬롯만 건드림). 실패 시 slot 롤백으로 다음 hotplug tick 에 재시도.     */
 static void init_other_drivers(void) {
     sensor_info_t *sl7  = &g_sensors.slot_l7cx;
     sensor_info_t *sl8  = &g_sensors.slot_l8cx;
@@ -82,6 +84,10 @@ static void init_other_drivers(void) {
         if (vl53l7cx_drv_init(&g_l7cx, addr8)) {
             sl7->initialized = true;
             vl53l7cx_drv_start(&g_l7cx);
+        } else {
+            printf("[SENSOR] L7CX driver init 실패 — slot 비활성화\n");
+            sl7->present = false;
+            if (g_sensors.count > 0) g_sensors.count--;
         }
     }
 
@@ -91,6 +97,10 @@ static void init_other_drivers(void) {
         if (vl53l8cx_drv_init(&g_l8cx, addr8)) {
             sl8->initialized = true;
             vl53l8cx_drv_start(&g_l8cx);
+        } else {
+            printf("[SENSOR] L8CX driver init 실패 — slot 비활성화\n");
+            sl8->present = false;
+            if (g_sensors.count > 0) g_sensors.count--;
         }
     }
 
@@ -99,6 +109,10 @@ static void init_other_drivers(void) {
         if (tmf8828_drv_init(&g_tmf)) {
             stmf->initialized = true;
             tmf8828_drv_start(&g_tmf);
+        } else {
+            printf("[SENSOR] TMF8828 driver init 실패 — slot 롤백 (재핫플러그 가능)\n");
+            stmf->present = false;
+            if (g_sensors.count > 0) g_sensors.count--;
         }
     }
 }
@@ -178,11 +192,13 @@ int main(void) {
     while (true) {
         poll_all_sensors();
 
-        /* 2초마다 L4CD 핫플러그 확인 */
+        /* 2초마다 핫플러그 확인 — L4CD(0x52), TMF(0x41), L7/L8(LPn) 모두 */
         if (++hotplug_timer >= 200) {
             hotplug_timer = 0;
-            if (sensor_manager_poll_hotplug(&g_sensors))
+            if (sensor_manager_poll_hotplug(&g_sensors)) {
                 init_l4cd_if_present();
+                init_other_drivers();
+            }
         }
 
         sleep_ms(10);

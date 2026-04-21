@@ -73,6 +73,37 @@ static void ctrl_pins_init(void) {
     sleep_ms(10);
 }
 
+/* ── LPn 제어 센서(L7CX/L8CX) 공용 탐지 헬퍼 ────────────────
+ *   호출 전제: 0x52 가 비어있어야 함 (caller 가 보장).
+ *   동작: LPn=HIGH → 10 ms 대기 → 0x52 probe → 응답하면 target 주소로 이동.
+ *   실패 시 LPn 을 LOW 로 되돌려 센서를 버스에서 격리.                   */
+static bool detect_lpn_sensor(sensor_table_t *table, sensor_info_t *slot,
+                                uint lpn_pin, uint8_t target_addr8,
+                                sensor_type_t type, const char *name) {
+    uint8_t default7 = ADDR_DEFAULT_ST >> 1;
+
+    gpio_put(lpn_pin, 1);
+    sleep_ms(10);
+
+    if (!i2c_probe(default7)) {
+        gpio_put(lpn_pin, 0);
+        return false;
+    }
+
+    uint8_t new7 = target_addr8 >> 1;
+    if (!st_set_i2c_addr(default7, new7) || !i2c_probe(new7)) {
+        gpio_put(lpn_pin, 0);
+        return false;
+    }
+
+    slot->type     = type;
+    slot->i2c_addr = new7;
+    slot->present  = true;
+    table->count++;
+    printf("[SENSOR] %s → 0x%02X\n", name, target_addr8);
+    return true;
+}
+
 /* ── 공개 API ────────────────────────────────────────────── */
 
 bool sensor_manager_init_phase1(sensor_table_t *table) {
@@ -179,38 +210,12 @@ bool sensor_manager_init_phase2(sensor_table_t *table) {
         printf("[SENSOR] TMF8828 @ 0x%02X\n", (uint8_t)(ADDR_TMF8828 << 1));
     }
 
-    /* L7CX: LPn HIGH → 0x52 → 0x56 (0x52 가 비어 있을 때만) */
+    /* L7CX / L8CX: LPn HIGH → 0x52 → 각자 할당 주소 (0x52 비어있을 때만) */
     if (!addr52_busy) {
-        gpio_put(PIN_L7CX_CS, 1);
-        sleep_ms(10);
-        if (i2c_probe(default7)) {
-            uint8_t new7 = ADDR_L7CX >> 1;
-            if (st_set_i2c_addr(default7, new7) && i2c_probe(new7)) {
-                table->slot_l7cx.type     = SENSOR_VL53L7CX;
-                table->slot_l7cx.i2c_addr = new7;
-                table->slot_l7cx.present  = true;
-                table->count++;
-                printf("[SENSOR] L7CX → 0x%02X\n", ADDR_L7CX);
-            }
-        } else {
-            gpio_put(PIN_L7CX_CS, 0);
-        }
-
-        /* L8CX: LPn HIGH → 0x52 → 0x58 */
-        gpio_put(PIN_L8CX_CS, 1);
-        sleep_ms(10);
-        if (i2c_probe(default7)) {
-            uint8_t new7 = ADDR_L8CX >> 1;
-            if (st_set_i2c_addr(default7, new7) && i2c_probe(new7)) {
-                table->slot_l8cx.type     = SENSOR_VL53L8CX;
-                table->slot_l8cx.i2c_addr = new7;
-                table->slot_l8cx.present  = true;
-                table->count++;
-                printf("[SENSOR] L8CX → 0x%02X\n", ADDR_L8CX);
-            }
-        } else {
-            gpio_put(PIN_L8CX_CS, 0);
-        }
+        detect_lpn_sensor(table, &table->slot_l7cx,
+                          PIN_L7CX_CS, ADDR_L7CX, SENSOR_VL53L7CX, "L7CX");
+        detect_lpn_sensor(table, &table->slot_l8cx,
+                          PIN_L8CX_CS, ADDR_L8CX, SENSOR_VL53L8CX, "L8CX");
     }
 
     printf("[SENSOR] Total: %d\n", table->count);
@@ -221,29 +226,60 @@ bool sensor_manager_init_phase2(sensor_table_t *table) {
  * L5CX가 0x50으로 이동한 뒤 0x52에 L4CD가 연결되면 감지.
  * 반환값: 새 센서가 감지되면 true (드라이버 초기화 필요)     */
 bool sensor_manager_poll_hotplug(sensor_table_t *table) {
-    if (table->slot_l4cd.present) return false;   /* 이미 감지됨 */
-
+    bool registered = false;
     uint8_t default7 = ADDR_DEFAULT_ST >> 1;
-    if (!i2c_probe(default7)) return false;
 
-    /* 모델 검증: L4CD 아니면 무시 (오삽입 보호).
-     * 갓 플러그인 상태면 부팅이 덜 끝나 read 가 실패할 수 있으므로
-     * read 실패 시 다음 cycle 에서 재시도한다. */
-    uint8_t l4cd_id = 0;
-    if (!st_read_reg16(default7, L4CD_REG_MODEL_ID, &l4cd_id)) {
-        /* 아직 부팅 중 — 다음 2초 후 재시도 */
-        return false;
-    }
-    if (l4cd_id != MODEL_ID_L4CD) {
-        printf("[SENSOR] WARN: 0x%02X 에 L4CD 아닌 장치 "
-               "(reg[0x10F]=0x%02X) — 무시\n", ADDR_DEFAULT_ST, l4cd_id);
-        return false;
+    /* 1. TMF8828 (0x41) — 0x52 와 독립된 주소라 언제든 시도 가능 */
+    if (!table->slot_tmf.present && i2c_probe(ADDR_TMF8828)) {
+        table->slot_tmf.type     = SENSOR_TMF8828;
+        table->slot_tmf.i2c_addr = ADDR_TMF8828;
+        table->slot_tmf.present  = true;
+        table->count++;
+        printf("[SENSOR] TMF8828 핫플러그 감지 @ 0x%02X\n",
+               (uint8_t)(ADDR_TMF8828 << 1));
+        registered = true;
     }
 
-    table->slot_l4cd.type     = SENSOR_VL53L4CD;
-    table->slot_l4cd.i2c_addr = default7;   /* 0x29 → drv_init 에서 0x2A(0x54) 이동 */
-    table->slot_l4cd.present  = true;
-    table->count++;
-    printf("[SENSOR] L4CD 핫플러그 감지 @ 0x%02X\n", ADDR_DEFAULT_ST);
-    return true;
+    /* 2. L4CD @ 0x52 — model_id 검증 후 등록.
+     *    L4CD 가 아직 0x52 에 있으면(이동 전) 아래의 L7/L8 LPn 토글과
+     *    버스 충돌할 수 있으므로 여기서 early return.                     */
+    if (!table->slot_l4cd.present && i2c_probe(default7)) {
+        uint8_t l4cd_id = 0;
+        if (!st_read_reg16(default7, L4CD_REG_MODEL_ID, &l4cd_id)) {
+            /* read 실패 — 부팅 중으로 간주, 다음 cycle 재시도 */
+            return registered;
+        }
+        if (l4cd_id == MODEL_ID_L4CD) {
+            table->slot_l4cd.type     = SENSOR_VL53L4CD;
+            table->slot_l4cd.i2c_addr = default7;
+            table->slot_l4cd.present  = true;
+            table->count++;
+            printf("[SENSOR] L4CD 핫플러그 감지 @ 0x%02X\n", ADDR_DEFAULT_ST);
+            registered = true;
+        } else {
+            printf("[SENSOR] WARN: 0x%02X 에 L4CD 아닌 장치 "
+                   "(reg[0x10F]=0x%02X) — 무시\n", ADDR_DEFAULT_ST, l4cd_id);
+        }
+        /* L4CD drv_init 으로 0x52 가 비워지기 전까진 L7/L8 은 건들지 않음 */
+        return registered;
+    }
+
+    /* 3. L7CX / L8CX — LPn↑ 후 0x52 probe → 주소 이동.
+     *    0x52 가 비어있다는 조건은 바로 위 블록에서 확인됨.               */
+    if (!table->slot_l7cx.present) {
+        if (detect_lpn_sensor(table, &table->slot_l7cx,
+                               PIN_L7CX_CS, ADDR_L7CX,
+                               SENSOR_VL53L7CX, "L7CX 핫플러그")) {
+            registered = true;
+        }
+    }
+    if (!table->slot_l8cx.present) {
+        if (detect_lpn_sensor(table, &table->slot_l8cx,
+                               PIN_L8CX_CS, ADDR_L8CX,
+                               SENSOR_VL53L8CX, "L8CX 핫플러그")) {
+            registered = true;
+        }
+    }
+
+    return registered;
 }
