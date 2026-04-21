@@ -52,16 +52,27 @@ bool tmf8828_drv_init(TMF8828_Drv *drv) {
      * REMAP_RESET:
      *   CMD_ID=0x11, SIZE=0x00, no DATA, CSUM=~0x11=0xEE                    */
     uint8_t appid = 0;
-    if (tmf_rd(TMF8828_REG_APPID, &appid) > 0 &&
-        appid == TMF8828_APPID_BOOTLOADER) {
+    int rd_ret = tmf_rd(TMF8828_REG_APPID, &appid);
+    printf("[TMF8828] initial APPID read: ret=%d val=0x%02X\n", rd_ret, appid);
+
+    if (rd_ret > 0 && appid == TMF8828_APPID_BOOTLOADER) {
         uint8_t remap_reset[4] = { 0x08, 0x11, 0x00, 0xEE };
-        i2c_write_timeout_us(SENSOR_I2C_PORT, TMF8828_I2C_ADDR,
-                              remap_reset, 4, false, TMF_TIMEOUT_US);
-        sleep_ms(3);
+        int wr_ret = i2c_write_timeout_us(SENSOR_I2C_PORT, TMF8828_I2C_ADDR,
+                                           remap_reset, 4, false, TMF_TIMEOUT_US);
+        printf("[TMF8828] REMAP_RESET i2c_write ret=%d (expected 4)\n", wr_ret);
+        sleep_ms(20);   /* reset + app boot 시간 여유 확보 */
+
+        /* CMD_STAT 읽어 bootloader 가 명령을 어떻게 받아들였는지 확인.
+         *   0x00 = READY (success), 이후 REMAP 실행됨 → APPID 0x03 예상
+         *   0x11 = 같은 CMD 에코 (아직 처리 전)
+         *   0x21-0x2F = error codes (HEADER/CSUM/OVERFLOW 등)               */
+        uint8_t cmd_stat = 0xAA;
+        int stat_ret = tmf_rd(0x08, &cmd_stat);
+        printf("[TMF8828] post-REMAP CMD_STAT=0x%02X (ret=%d)\n", cmd_stat, stat_ret);
     }
 
-    /* Measurement App 전환 대기 (최대 200 ms) */
-    for (int i = 0; i < 20; i++) {
+    /* Measurement App 전환 대기 (최대 500 ms) */
+    for (int i = 0; i < 50; i++) {
         tmf_rd(TMF8828_REG_APPID, &appid);
         if (appid == TMF8828_APPID_MEASUREMENT)
             break;
@@ -69,7 +80,8 @@ bool tmf8828_drv_init(TMF8828_Drv *drv) {
     }
 
     if (appid != TMF8828_APPID_MEASUREMENT) {
-        printf("[TMF8828] app not ready (APPID=0x%02X)\n", appid);
+        printf("[TMF8828] app not ready (APPID=0x%02X) — "
+               "flash 에 factory firmware 없을 가능성 (host FW 업로드 필요)\n", appid);
         return false;
     }
 
