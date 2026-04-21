@@ -6,7 +6,7 @@
 #define SENSOR_I2C_PORT     i2c1
 #define SENSOR_I2C_SDA      2
 #define SENSOR_I2C_SCL      3
-#define SENSOR_I2C_SPEED    100000U
+#define SENSOR_I2C_SPEED    400000U   /* STEMMA QT 다중 장착 시 SI 여유 확보용 */
 
 /* 제어 핀 */
 #define PIN_L7CX_CS      10   /* VL53L7CX LPn */
