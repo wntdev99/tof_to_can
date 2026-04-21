@@ -90,7 +90,7 @@ target_compile_definitions(tof_to_can PRIVATE
     VL53L7CX_NB_TARGET_PER_ZONE=1
     VL53L8CX_NB_TARGET_PER_ZONE=1
     # L5CX_DEBUG_SERIAL   # (검증 완료, 비활성) 시리얼로 8x8 거리 맵 출력
-    L4CD_DEBUG_SERIAL     # 시리얼로 L4CD 단일존 거리/상태 출력 — 검증 후 삭제
+    # L4CD_DEBUG_SERIAL   # (검증 완료, 비활성) 시리얼로 L4CD 단일존 거리/상태 출력
 )
 
 target_link_libraries(tof_to_can
