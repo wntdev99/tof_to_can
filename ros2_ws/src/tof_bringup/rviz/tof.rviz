@@ -1,0 +1,71 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Cell Size: 0.5
+      Color: 160; 160; 164
+      Plane: XY
+      Reference Frame: base_link
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Show Names: true
+      Show Axes: true
+    - Class: rviz_default_plugins/Range
+      Name: L4CD Range
+      Enabled: true
+      Topic:
+        Value: /tof/l4cd
+        Reliability Policy: Best Effort
+      Color: 255; 80; 80
+      Alpha: 0.4
+    - Class: rviz_default_plugins/PointCloud2
+      Name: L5CX PointCloud
+      Enabled: true
+      Topic:
+        Value: /tof/l5cx/points
+        Reliability Policy: Best Effort
+      Style: Points
+      Size (Pixels): 6
+      Color Transformer: AxisColor
+      Axis: Z
+    - Class: rviz_default_plugins/PointCloud2
+      Name: L7CX PointCloud
+      Enabled: true
+      Topic:
+        Value: /tof/l7cx/points
+        Reliability Policy: Best Effort
+      Style: Points
+      Size (Pixels): 6
+      Color Transformer: AxisColor
+      Axis: Z
+  Global Options:
+    Fixed Frame: base_link
+    Background Color: 48; 48; 48
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 3.0
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Pitch: 0.6
+      Yaw: 0.8
+      Name: Orbit
+Window Geometry:
+  Height: 720
+  Width: 1280
+  Displays:
+    collapsed: false

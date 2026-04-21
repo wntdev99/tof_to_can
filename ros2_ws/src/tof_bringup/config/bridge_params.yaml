@@ -1,0 +1,16 @@
+tof_can_bridge:
+  ros__parameters:
+    can_interface: can0
+
+    # 센서 frame id (TF tree 와 일치시켜야 RViz 시각화 정상 동작)
+    frame_id_l4cd: l4cd_frame
+    frame_id_l5cx: l5cx_optical_frame
+    frame_id_l7cx: l7cx_optical_frame
+
+    # VL53L5CX/L7CX 8×8 zone 축 FoV (ST community 검증값).
+    # 4×4 모드로 바꾸면 이 값도 재계산 필요.
+    fov_axis_deg: 43.0
+
+    # zone 배열이 RViz 에서 상하/좌우 뒤집혀 보이면 true 로 전환.
+    flip_rows: false
+    flip_cols: false

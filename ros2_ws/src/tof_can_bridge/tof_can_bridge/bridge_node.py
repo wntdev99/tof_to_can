@@ -9,7 +9,7 @@ SocketCAN (can0) 에서 프레임을 읽어:
 실행:
   sudo ip link set can0 type can bitrate 500000
   sudo ip link set can0 up
-  ros2 launch tof_can_bridge bringup.launch.py
+  ros2 launch tof_bringup bringup.launch.py
 """
 
 import struct
