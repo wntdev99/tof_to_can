@@ -44,10 +44,17 @@
 #define MCP_MODE_CONFIG     0x80
 #define MCP_MODE_MASK       0xE0
 
-/* 비트타이밍 (12MHz 크리스탈, 500kbps) */
-#define MCP_CNF1_500K_12MHZ 0x00
-#define MCP_CNF2_500K_12MHZ 0x9A
-#define MCP_CNF3_500K_12MHZ 0x02
+/* 비트타이밍 (16 MHz XTAL — Adafruit RP2040 CAN Feather, 500 kbps)
+ *   BRP=0 → TQ = 2/16 MHz = 125 ns
+ *   NBT = SyncSeg(1) + PropSeg(5) + PS1(8) + PS2(2) = 16 TQ → 2 µs → 500 kbps
+ *   sample point = 14/16 = 87.5 % (수신측 can0 과 동일)
+ *
+ * 이전 값 (12 MHz 가정 + NBT=11 TQ) 은 545 kbps 로 산출되어 외부 버스
+ * 수신측(500 kbps)과 편차가 크게 발생, CRC/ACK 이 모두 깨져 can0 이
+ * ERROR-PASSIVE(rx-err 128)로 전이하던 버그. XTAL 을 16 MHz 로 정정.       */
+#define MCP_CNF1_500K_16MHZ 0x00   /* SJW=1 TQ, BRP=0                       */
+#define MCP_CNF2_500K_16MHZ 0xBC   /* BTLMODE=1, SAM=0, PS1=8 TQ, PropSeg=5 TQ */
+#define MCP_CNF3_500K_16MHZ 0x01   /* PS2 = 2 TQ                            */
 
 bool mcp25625_init(void);
 bool mcp25625_set_normal_mode(void);

@@ -82,9 +82,9 @@ bool mcp25625_init(void) {
         return false;
 
     /* 비트타이밍: 12MHz XTAL, 500kbps */
-    mcp25625_write_reg(MCP_REG_CNF1, MCP_CNF1_500K_12MHZ);
-    mcp25625_write_reg(MCP_REG_CNF2, MCP_CNF2_500K_12MHZ);
-    mcp25625_write_reg(MCP_REG_CNF3, MCP_CNF3_500K_12MHZ);
+    mcp25625_write_reg(MCP_REG_CNF1, MCP_CNF1_500K_16MHZ);
+    mcp25625_write_reg(MCP_REG_CNF2, MCP_CNF2_500K_16MHZ);
+    mcp25625_write_reg(MCP_REG_CNF3, MCP_CNF3_500K_16MHZ);
 
     /* TX 인터럽트 비활성화 (폴링 모드) */
     mcp25625_write_reg(MCP_REG_CANINTE, 0x00);
