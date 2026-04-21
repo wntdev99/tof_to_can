@@ -51,20 +51,30 @@ static void init_l5cx_if_present(void) {
     }
 }
 
-/* ── 나머지 센서 드라이버 초기화 (phase2 이후) */
+/* ── L4CD 초기화: phase1 직후(부팅) 또는 hotplug 감지 직후에 호출.
+ *   init 성공 시 ULD 에서 0x52 → 0x54 이동 → 0x52 를 다시 탐지 슬롯으로 해방.
+ *   실패 시 slot 롤백하여 이후 핫플러그에서 재시도 가능.                   */
+static void init_l4cd_if_present(void) {
+    sensor_info_t *sl4 = &g_sensors.slot_l4cd;
+    if (!sl4->present || sl4->initialized) return;
+
+    uint8_t addr8 = (uint8_t)(sl4->i2c_addr << 1);   /* 0x52 */
+    if (vl53l4cd_drv_init(&g_l4cd, addr8, 10, 0)) {
+        sl4->i2c_addr    = (uint8_t)(ADDR_L4CD_ASSIGNED >> 1);   /* 0x2A */
+        sl4->initialized = true;
+        vl53l4cd_drv_start(&g_l4cd);
+    } else {
+        printf("[SENSOR] L4CD driver init 실패 — slot 롤백 (재핫플러그 가능)\n");
+        sl4->present = false;
+        if (g_sensors.count > 0) g_sensors.count--;
+    }
+}
+
+/* ── 나머지 센서 드라이버 초기화 (phase2 이후) — L5CX/L4CD 는 제외 */
 static void init_other_drivers(void) {
-    sensor_info_t *sl4  = &g_sensors.slot_l4cd;
     sensor_info_t *sl7  = &g_sensors.slot_l7cx;
     sensor_info_t *sl8  = &g_sensors.slot_l8cx;
     sensor_info_t *stmf = &g_sensors.slot_tmf;
-
-    if (sl4->present && !sl4->initialized) {
-        uint8_t addr8 = (uint8_t)(sl4->i2c_addr << 1);
-        if (vl53l4cd_drv_init(&g_l4cd, addr8, 10, 0)) {
-            sl4->initialized = true;
-            vl53l4cd_drv_start(&g_l4cd);
-        }
-    }
 
     /* VL53L7CX @ 0x56 (재할당) */
     if (sl7->present && !sl7->initialized) {
@@ -147,16 +157,17 @@ int main(void) {
     }
 
     /* 센서 자동 감지 — 2단계로 분할
-     *   phase1: 0x52 probe (L5CX / L4CD)
-     *   L5CX driver init: 성공 시 0x52→0x50 이동 (phase2 의 L7/L8 탐지와 충돌 방지)
+     *   phase1: 0x52 probe (L5CX / L4CD 모델 판별)
+     *   init_l5cx/l4cd: 각자 할당 주소(0x50/0x54)로 이동 → 0x52 항상 free
      *   phase2: TMF(0x41) / L7CX(0x52→0x56) / L8CX(0x52→0x58)                */
     printf("[SENSOR] Scanning I2C bus...\n");
     sensor_manager_init_phase1(&g_sensors);
     init_l5cx_if_present();
+    init_l4cd_if_present();
     if (!sensor_manager_init_phase2(&g_sensors))
         printf("[SENSOR] No sensors found — CAN TX only\n");
 
-    /* 남은 드라이버 초기화 (L5CX 는 이미 시작됨) */
+    /* 남은 드라이버 초기화 (L5CX/L4CD 는 이미 시작됨) */
     init_other_drivers();
 
     /* Core1 시작 (CAN TX) */
@@ -170,11 +181,8 @@ int main(void) {
         /* 2초마다 L4CD 핫플러그 확인 */
         if (++hotplug_timer >= 200) {
             hotplug_timer = 0;
-            if (sensor_manager_poll_hotplug(&g_sensors)) {
-                uint8_t addr8 = (uint8_t)(g_sensors.slot_l4cd.i2c_addr << 1);
-                if (vl53l4cd_drv_init(&g_l4cd, addr8, 10, 0))
-                    vl53l4cd_drv_start(&g_l4cd);
-            }
+            if (sensor_manager_poll_hotplug(&g_sensors))
+                init_l4cd_if_present();
         }
 
         sleep_ms(10);

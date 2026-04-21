@@ -121,18 +121,28 @@ bool sensor_manager_init_phase1(sensor_table_t *table) {
             table->slot_l5cx.i2c_addr = default7;   /* 0x29 (8-bit 0x52) */
             table->slot_l5cx.present  = true;
             table->count++;
-            printf("[SENSOR] L5CX @ 0x%02X (driver init에서 0x50 이동 예정)\n",
-                   ADDR_DEFAULT_ST);
-        } else if (!read_ok || model_id != MODEL_ID_L5CX) {
-            /* 0x52 응답하지만 L5CX가 아님 → L4CD 후보 */
-            table->slot_l4cd.type     = SENSOR_VL53L4CD;
-            table->slot_l4cd.i2c_addr = default7;
-            table->slot_l4cd.present  = true;
-            table->count++;
-            printf("[SENSOR] L4CD @ 0x%02X\n", ADDR_DEFAULT_ST);
+            printf("[SENSOR] L5CX @ 0x%02X (driver init에서 0x%02X 이동 예정)\n",
+                   ADDR_DEFAULT_ST, ADDR_L5CX_ASSIGNED);
+        } else {
+            /* L5CX 가 아니면 L4CD 로 확정하기 위해 reg 0x010F 확인.
+             * (0x52 에 응답하는 미지의 ST 장치 오인식 방지) */
+            uint8_t l4cd_id = 0;
+            bool l4cd_ok = st_read_reg16(default7, L4CD_REG_MODEL_ID, &l4cd_id);
+            if (l4cd_ok && l4cd_id == MODEL_ID_L4CD) {
+                table->slot_l4cd.type     = SENSOR_VL53L4CD;
+                table->slot_l4cd.i2c_addr = default7;
+                table->slot_l4cd.present  = true;
+                table->count++;
+                printf("[SENSOR] L4CD @ 0x%02X (driver init에서 0x%02X 이동 예정)\n",
+                       ADDR_DEFAULT_ST, ADDR_L4CD_ASSIGNED);
+            } else {
+                printf("[SENSOR] WARN: 0x%02X 에 알 수 없는 장치 "
+                       "(reg[0]=0x%02X, reg[0x10F]=0x%02X ok=%d) — 등록 안 함\n",
+                       ADDR_DEFAULT_ST, model_id, l4cd_id, l4cd_ok);
+            }
         }
     } else {
-        printf("[SENSOR] no device @ 0x%02X (L4CD 핫플러그 대기)\n", ADDR_DEFAULT_ST);
+        printf("[SENSOR] no device @ 0x%02X (L4CD/L5CX 핫플러그 대기)\n", ADDR_DEFAULT_ST);
     }
 
     return true;
@@ -142,20 +152,22 @@ bool sensor_manager_init_phase2(sensor_table_t *table) {
     uint8_t default7 = ADDR_DEFAULT_ST >> 1;
 
     /* phase2 안전 전제: 0x52 는 비어 있어야 한다.
-     *   - L5CX 가 감지되었으면 driver init 이 성공해 0x50 으로 이동했어야 함.
-     *   - L4CD 는 이 시점엔 아직 드라이버 init 전이라 0x52 에 남아 있을 수 있음.
-     *   두 경우 모두 0x52 를 건드리는 L7/L8 탐지는 위험하므로 생략. */
+     *   이 시점엔 L5CX / L4CD 모두 drv_init 에서 각자 할당 주소(0x50/0x54)
+     *   로 이동이 완료됐어야 하며, 0x52 가 여전히 점유되어 있으면 이동이
+     *   실패한 것. 0x52 를 건드리는 L7/L8 탐지는 위험하므로 생략.           */
     bool addr52_busy = i2c_probe(default7);
     if (addr52_busy) {
-        if (table->slot_l5cx.present && !table->slot_l5cx.initialized) {
+        bool l5_stuck = table->slot_l5cx.present && !table->slot_l5cx.initialized;
+        bool l4_stuck = table->slot_l4cd.present && !table->slot_l4cd.initialized;
+        if (l5_stuck) {
             printf("[SENSOR] WARN: L5CX 이동 실패(0x52 점유) — L7/L8 탐지 스킵\n");
-        } else if (table->slot_l4cd.present) {
-            printf("[SENSOR] 0x52 L4CD 점유 — L7/L8 탐지 스킵\n");
+        } else if (l4_stuck) {
+            printf("[SENSOR] WARN: L4CD 이동 실패(0x52 점유) — L7/L8 탐지 스킵\n");
         } else {
             printf("[SENSOR] WARN: 0x52 미상 점유 — L7/L8 탐지 스킵\n");
         }
-    } else if (table->slot_l5cx.present) {
-        printf("[SENSOR] 0x52 free — L4CD 핫플러그 대기중\n");
+    } else if (table->slot_l5cx.present || table->slot_l4cd.present) {
+        printf("[SENSOR] 0x52 free — 추가 핫플러그 대기중\n");
     }
 
     /* TMF8828 (0x41) — 0x52 와 무관하므로 항상 시도 */
@@ -214,8 +226,22 @@ bool sensor_manager_poll_hotplug(sensor_table_t *table) {
     uint8_t default7 = ADDR_DEFAULT_ST >> 1;
     if (!i2c_probe(default7)) return false;
 
+    /* 모델 검증: L4CD 아니면 무시 (오삽입 보호).
+     * 갓 플러그인 상태면 부팅이 덜 끝나 read 가 실패할 수 있으므로
+     * read 실패 시 다음 cycle 에서 재시도한다. */
+    uint8_t l4cd_id = 0;
+    if (!st_read_reg16(default7, L4CD_REG_MODEL_ID, &l4cd_id)) {
+        /* 아직 부팅 중 — 다음 2초 후 재시도 */
+        return false;
+    }
+    if (l4cd_id != MODEL_ID_L4CD) {
+        printf("[SENSOR] WARN: 0x%02X 에 L4CD 아닌 장치 "
+               "(reg[0x10F]=0x%02X) — 무시\n", ADDR_DEFAULT_ST, l4cd_id);
+        return false;
+    }
+
     table->slot_l4cd.type     = SENSOR_VL53L4CD;
-    table->slot_l4cd.i2c_addr = default7;
+    table->slot_l4cd.i2c_addr = default7;   /* 0x29 → drv_init 에서 0x2A(0x54) 이동 */
     table->slot_l4cd.present  = true;
     table->count++;
     printf("[SENSOR] L4CD 핫플러그 감지 @ 0x%02X\n", ADDR_DEFAULT_ST);

@@ -13,16 +13,23 @@
 #define PIN_L8CX_CS      11   /* VL53L8CX LPn */
 #define PIN_TMF_EN       12   /* TMF8828  EN  */
 
-/* I2C 주소 (8-bit) */
+/* I2C 주소 (8-bit)
+ *   0x52 = 모든 ST ToF 의 기본 주소 → 부팅/핫플러그 시 모델별로 전용
+ *   주소(0x50/0x54/0x56/0x58)로 이동해 0x52 를 항상 '탐지 슬롯'으로 비움. */
 #define ADDR_DEFAULT_ST      0x52
-#define ADDR_L5CX_ASSIGNED   0x50   /* L5CX를 부팅 시 이 주소로 이동 → 0x52 해방 */
+#define ADDR_L5CX_ASSIGNED   0x50
+#define ADDR_L4CD_ASSIGNED   0x54
 #define ADDR_L7CX            0x56
 #define ADDR_L8CX            0x58
 #define ADDR_TMF8828         0x41
 
-/* Model ID (reg[0x0000]) */
-#define ST_REG_MODEL_ID     0x0000
-#define MODEL_ID_L5CX       0xF0
+/* Model ID
+ *   L5CX/L7CX/L8CX 는 동일 silicon 으로 reg[0x0000] = 0xF0 (구분은 LPn 로)
+ *   L4CD 는 reg[0x010F] = 0xEB (상위 바이트)                              */
+#define ST_REG_MODEL_ID      0x0000
+#define L4CD_REG_MODEL_ID    0x010F
+#define MODEL_ID_L5CX        0xF0
+#define MODEL_ID_L4CD        0xEB
 
 typedef enum {
     SENSOR_NONE = 0,

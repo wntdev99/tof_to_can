@@ -3,6 +3,7 @@
 #include "VL53L4CD_api.h"
 #include "../../can/can_tx.h"
 #include "../../can/can_protocol.h"
+#include "../../sensor/sensor_manager.h"
 #include <stdio.h>
 
 static VL53L4CD_Platform _platform;
@@ -25,12 +26,27 @@ bool vl53l4cd_drv_init(VL53L4CD_Drv *drv, uint8_t i2c_addr8,
         printf("[L4CD] init failed err=0x%02X @ 0x%02X\n", st, i2c_addr8);
         return false;
     }
+
+    /* init 완료 후 0x54 로 이동 — 0x52 를 공용 탐지/핫플러그 슬롯으로 해방.
+     * L4CD 의 SetI2CAddress 는 reg 0x0001 단일 바이트 write (FW 로딩 불필요). */
+    if (i2c_addr8 == ADDR_DEFAULT_ST) {
+        if (VL53L4CD_SetI2CAddress(dev, ADDR_L4CD_ASSIGNED)) {
+            printf("[L4CD] addr move 0x%02X→0x%02X 실패\n",
+                   ADDR_DEFAULT_ST, ADDR_L4CD_ASSIGNED);
+            return false;
+        }
+        _platform.address = ADDR_L4CD_ASSIGNED;
+        printf("[L4CD] addr moved 0x%02X→0x%02X\n",
+               ADDR_DEFAULT_ST, ADDR_L4CD_ASSIGNED);
+    }
+
     if (VL53L4CD_SetRangeTiming(dev, timing_budget_ms, inter_meas_ms)) {
         printf("[L4CD] SetRangeTiming failed\n");
         return false;
     }
     drv->initialized = true;
-    printf("[L4CD] OK @ 0x%02X  tb=%lums\n", i2c_addr8, (unsigned long)timing_budget_ms);
+    printf("[L4CD] OK @ 0x%02X  tb=%lums\n",
+           (uint8_t)_platform.address, (unsigned long)timing_budget_ms);
     return true;
 }
 
