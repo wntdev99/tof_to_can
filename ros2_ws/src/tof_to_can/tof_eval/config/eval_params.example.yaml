@@ -41,6 +41,13 @@ tof_eval:
     # L5CX/L7CX: 64,  L4CD: 1,  Gemini: width×height (e.g., 640*480=307200)
     expected_point_count: 64
 
+    # ── 전처리 — voxel downsampling ─────────────────────────────
+    # 0.0 = 비활성화 (L5CX/L7CX 같은 sparse 센서에서는 사용하지 않음).
+    # Gemini 336 처럼 dense cloud (≥300K pts) 를 보내는 센서에서는
+    # 0.05 m 로 설정해 RANSAC/clustering 처리 시간을 ~1 ms 수준으로 낮춘다.
+    # valid_count / valid_zone_ratio 는 downsampling 전 원본 기준으로 기록된다.
+    voxel_leaf_m: 0.0
+
     # ── Group A4 — forward slab density ────────────────────────
     density_distances_m: [0.3, 0.5, 1.0, 1.5, 2.0]
     density_slab_thickness_m: 0.2          # [D-0.1, D+0.1] 범위

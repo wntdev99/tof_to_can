@@ -35,7 +35,7 @@ from .metrics import (
     forward_slab_density,
     match_obstacles,
 )
-from .pointcloud_io import pointcloud2_to_xyz
+from .pointcloud_io import pointcloud2_to_xyz, voxel_downsample
 from .session_writer import SessionWriter
 
 
@@ -77,6 +77,9 @@ class TofEvalNode(Node):
         # A1 — expected point count (0 이면 NaN 으로 기록)
         self.declare_parameter('expected_point_count', 64)
 
+        # 전처리 — voxel downsampling (0.0 = 비활성화; Gemini 처럼 dense cloud 에만 설정)
+        self.declare_parameter('voxel_leaf_m', 0.0)
+
         # A4 — forward slab density 파라미터
         self.declare_parameter('density_distances_m', [0.3, 0.5, 1.0, 1.5, 2.0])
         self.declare_parameter('density_slab_thickness_m', 0.2)
@@ -115,6 +118,7 @@ class TofEvalNode(Node):
         self._clust_min_pts = int(p('clustering.min_cluster_points').value)
 
         self._expected_count = int(p('expected_point_count').value)
+        self._voxel_leaf = float(p('voxel_leaf_m').value)
 
         self._density_distances: List[float] = [
             float(x) for x in p('density_distances_m').value
@@ -142,6 +146,7 @@ class TofEvalNode(Node):
                 'min_cluster_points': self._clust_min_pts,
             },
             'expected_point_count': self._expected_count,
+            'voxel_leaf_m': self._voxel_leaf,
             'density_slab_thickness_m': self._density_thickness,
             'density_lateral_window_m': self._density_lateral,
             'input_topic': input_topic,
@@ -237,9 +242,12 @@ class TofEvalNode(Node):
         valid_ratio = (n_valid / self._expected_count) if self._expected_count > 0 \
             else float('nan')
 
+        # 1-b) voxel downsampling — RANSAC/clustering 투입 전 dense cloud 축소
+        pts_proc = voxel_downsample(pts_raw, self._voxel_leaf)
+
         # 2) RANSAC ground plane
         plane = fit_ground_plane(
-            pts_raw,
+            pts_proc,
             distance_threshold=self._ransac_thresh,
             max_iterations=self._ransac_iters,
             min_inlier_ratio=self._min_inlier,
@@ -273,7 +281,7 @@ class TofEvalNode(Node):
             self._frame_idx += 1
             return
 
-        pts_wf = to_working_frame(pts_raw, wf)
+        pts_wf = to_working_frame(pts_proc, wf)
 
         # 4) A4 density — inlier 만
         inlier_wf = pts_wf[plane.inlier_mask]

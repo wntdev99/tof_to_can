@@ -68,3 +68,18 @@ def pointcloud2_to_xyz(msg: PointCloud2) -> np.ndarray:
         out = out[mask]
 
     return out
+
+
+def voxel_downsample(pts: np.ndarray, leaf: float) -> np.ndarray:
+    """
+    Voxel grid downsampling. leaf ≤ 0 이면 no-op.
+
+    각 voxel 에서 첫 번째 점 1개를 유지한다 (centroid 보다 빠르고,
+    RANSAC / BFS clustering 입력 목적으로 충분).
+    """
+    if leaf <= 0.0 or pts.shape[0] == 0:
+        return pts
+    inv_leaf = 1.0 / leaf
+    voxel_idx = np.floor(pts * inv_leaf).astype(np.int64)
+    _, first_occ = np.unique(voxel_idx, axis=0, return_index=True)
+    return pts[first_occ]
