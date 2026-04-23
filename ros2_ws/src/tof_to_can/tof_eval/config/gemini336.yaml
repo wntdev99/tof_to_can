@@ -1,0 +1,64 @@
+# tof_eval 파라미터 예시.
+#
+# 세션 하나 = 이 파일 하나. 센서/환경 바꿔 테스트할 때 이 파일을 복제해서
+# scene 블록과 input_topic 만 수정하면 된다.
+#
+# 좌표계: working frame (forward, right, up) — ground plane 으로부터 자동 산출.
+#   forward = 센서 optical axis 를 ground 에 투영한 방향 (전방)
+#   right   = up × forward
+#   up      = ground plane normal (센서 쪽)
+
+tof_eval:
+  ros__parameters:
+    # 평가할 PointCloud2 토픽 — 센서 교체 시 이 값만 바꾸면 됨
+    input_topic: /camera/depth/points
+
+    # ── scene 메타데이터 (알고리즘과 무관, CSV/meta 에만 기록) ────
+    scene:
+      session_id: gemini336_matte_indoor_001    # CSV/JSON 파일명에 사용
+      sensor: GEMINI_336                     # VL53L7CX / VL53L4CD / GEMINI_336 …
+      floor_material: matte_vinyl          # matte_vinyl | glossy_tile | carpet | concrete | rubber_mat | wood | epoxy
+      floor_color: light_grey              # light_grey | dark_grey | black | white | wood_brown | beige
+      ambient_light: indoor_led            # indoor_led | indoor_fluorescent | dim | dark | direct_sunlight | window_backlight
+      obstacle_surface: matte_cardboard    # matte_cardboard | glossy_plastic | fabric | metal | mirror | matte_painted
+      notes: "실내 기본 조명, creek-window closed"
+      tags: [""]                           # 빈 문자열 하나는 ROS2 param 빈 array 우회용
+
+    # ── Ground plane (Group B) ──────────────────────────────────
+    ground_removal:
+      ransac_distance_threshold: 0.02      # m — inlier 판정 반경
+      ransac_max_iterations: 100
+      min_inlier_ratio: 0.3                # 이 미만이면 ground fit 실패 로 기록
+
+    # ── Clustering (Group C 전처리) ─────────────────────────────
+    clustering:
+      min_height_above_ground: 0.03        # m — 바닥 제거 threshold (costmap obstacle 기준)
+      max_height_above_ground: 2.0
+      euclidean_tolerance: 0.05            # BFS 이웃 반경
+      min_cluster_points: 3                # ToF sparse 고려 낮게 설정
+
+    # ── Group A1 — valid zone ratio ─────────────────────────────
+    # L5CX/L7CX: 64,  L4CD: 1,  Gemini: width×height (e.g., 640*480=307200)
+    expected_point_count: 64
+
+    # ── Group A4 — forward slab density ────────────────────────
+    density_distances_m: [0.3, 0.5, 1.0, 1.5, 2.0]
+    density_slab_thickness_m: 0.2          # [D-0.1, D+0.1] 범위
+    density_lateral_window_m: 2.0          # right ∈ [-1, +1] 범위
+
+    # ── Obstacles (Group C) ─────────────────────────────────────
+    # 1) obstacle_ids 로 등록할 id 나열
+    # 2) 각 id 마다 obstacles.<id>.{expected_xyz, size_xyz, search_radius} 정의
+    #
+    # expected_xyz: (forward, right, up) working-frame 좌표.
+    #   "센서 앞 1.0 m, 오른쪽 0 m, 바닥 위 5 cm" → [1.0, 0.0, 0.05]
+    obstacle_ids: [cube_a]
+
+    obstacles:
+      cube_a:
+        expected_xyz: [0.05, 0.0, 0.05]
+        size_xyz: [0.04, 0.04, 0.04]       # 실제 cube 치수 (m)
+        search_radius: 0.20
+
+    # ── 출력 ───────────────────────────────────────────────────
+    csv_output_dir: /tmp/tof_eval

@@ -1,0 +1,255 @@
+# Gemini 330 Series camera parameters
+# Keys must match launch argument names exactly for merge_params to work
+
+# --- device ---
+camera_name: "camera"
+serial_number: ""
+usb_port: ""
+device_num: 1
+uvc_backend: "libuvc"                 # libuvc or v4l2
+connection_delay: 10
+time_domain: "global"                 # global, device, system
+retry_on_usb3_detection_failure: false
+enable_heartbeat: false
+enable_ldp: true
+device_preset: "Default"              # Default, Hand, High Accuracy, High Density, Medium Density, Custom
+device_access_mode: "Default"         # Default, EA or CA (only for 335le)
+exposure_range_mode: "default"        # default, ultimate or regular
+
+# --- network device ---
+enumerate_net_device: false
+net_device_ip: ""
+net_device_port: 0
+
+# --- color ---
+enable_color: true
+color_width: 0
+color_height: 0
+color_fps: 0
+color_format: "ANY"
+color_qos: "default"
+color_camera_info_qos: "default"
+enable_color_auto_exposure: true
+enable_color_auto_exposure_priority: false
+enable_color_auto_white_balance: true
+enable_color_undistortion: false
+color_ae_max_exposure: -1
+color_ae_roi_left: -1
+color_ae_roi_right: -1
+color_ae_roi_top: -1
+color_ae_roi_bottom: -1
+color_exposure: -1
+color_gain: -1
+color_white_balance: -1
+color_brightness: -1
+color_sharpness: -1
+color_gamma: -1
+color_saturation: -1
+color_contrast: -1
+color_hue: -1
+color_backlight_compensation: -1      # range: 0 - 6, default: 3
+color_powerline_freq: ""              # disable, 50hz, 60hz, auto
+color_rotation: -1                    # 0, 90, 180, 270
+color_flip: false
+color_mirror: false
+color_preset: "Default"               # Default, Warm Biased AWB
+enable_color_decimation_filter: false
+color_decimation_filter_scale: -1
+color_denoising_level: -1             # 0: Auto; 1-8: higher values = stronger denoising
+color_delay_us: 0
+
+# --- depth ---
+enable_depth: true
+depth_width: 0
+depth_height: 0
+depth_fps: 0
+depth_format: "ANY"
+depth_qos: "default"
+depth_camera_info_qos: "default"
+depth_registration: true
+align_mode: "SW"                      # HW or SW
+align_target_stream: "COLOR"          # COLOR or DEPTH
+enable_depth_scale: true
+depth_precision: ""
+enable_depth_auto_exposure_priority: false
+depth_ae_roi_left: -1
+depth_ae_roi_right: -1
+depth_ae_roi_top: -1
+depth_ae_roi_bottom: -1
+mean_intensity_set_point: -1
+depth_rotation: -1                    # 0, 90, 180, 270
+depth_flip: false
+depth_mirror: false
+depth_delay_us: 0
+disparity_to_depth_mode: "HW"         # HW or SW
+enable_disparity_to_depth: true
+disparity_range_mode: -1
+disparity_search_offset: -1
+disparity_offset_config: false
+offset_index0: -1
+offset_index1: -1
+
+# --- laser ---
+enable_laser: true
+laser_energy_level: -1
+
+# --- depth filters ---
+enable_noise_removal_filter: true
+noise_removal_filter_min_diff: 256
+noise_removal_filter_max_size: 80
+enable_decimation_filter: false
+decimation_filter_scale: -1
+enable_threshold_filter: true
+threshold_filter_max: 2000
+threshold_filter_min: 0
+enable_hardware_noise_removal_filter: true
+hardware_noise_removal_filter_threshold: -1.0
+enable_spatial_filter: false
+spatial_filter_alpha: -1.0
+spatial_filter_diff_threshold: -1
+spatial_filter_magnitude: -1
+spatial_filter_radius: -1
+enable_spatial_fast_filter: false
+spatial_fast_filter_radius: -1
+enable_spatial_moderate_filter: false
+spatial_moderate_filter_diff_threshold: -1
+spatial_moderate_filter_magnitude: -1
+spatial_moderate_filter_radius: -1
+enable_temporal_filter: false
+temporal_filter_diff_threshold: -1.0
+temporal_filter_weight: -1.0
+enable_hole_filling_filter: false
+hole_filling_filter_mode: ""
+enable_sequence_id_filter: false
+sequence_id_filter_id: -1
+enable_hdr_merge: false
+hdr_merge_exposure_1: -1
+hdr_merge_gain_1: -1
+hdr_merge_exposure_2: -1
+hdr_merge_gain_2: -1
+
+# --- left IR ---
+enable_left_ir: false
+left_ir_width: 0
+left_ir_height: 0
+left_ir_fps: 0
+left_ir_format: "ANY"
+left_ir_qos: "default"
+left_ir_camera_info_qos: "default"
+left_ir_rotation: -1                  # 0, 90, 180, 270
+left_ir_flip: false
+left_ir_mirror: false
+enable_left_ir_sequence_id_filter: false
+left_ir_sequence_id_filter_id: -1
+
+# --- right IR ---
+enable_right_ir: false
+right_ir_width: 0
+right_ir_height: 0
+right_ir_fps: 0
+right_ir_format: "ANY"
+right_ir_qos: "default"
+right_ir_camera_info_qos: "default"
+right_ir_rotation: -1                 # 0, 90, 180, 270
+right_ir_flip: false
+right_ir_mirror: false
+enable_right_ir_sequence_id_filter: false
+right_ir_sequence_id_filter_id: -1
+
+# --- IR common ---
+enable_ir_auto_exposure: true
+ir_exposure: -1
+ir_gain: -1
+ir_ae_max_exposure: -1
+ir_brightness: -1
+
+# --- IMU ---
+enable_accel: false
+enable_accel_data_correction: true
+accel_rate: "200hz"
+accel_range: "4g"
+enable_gyro: false
+enable_gyro_data_correction: true
+gyro_rate: "200hz"
+gyro_range: "1000dps"
+enable_sync_output_accel_gyro: false
+linear_accel_cov: 0.01
+angular_vel_cov: 0.01
+
+# --- point cloud ---
+enable_point_cloud: true
+enable_colored_point_cloud: false
+point_cloud_qos: "default"
+cloud_frame_id: ""
+ordered_pc: false
+point_cloud_decimation_filter_factor: 1
+
+# --- TF ---
+publish_tf: true
+tf_publish_rate: 0.0
+enable_publish_extrinsic: false
+ir_info_url: ""
+color_info_url: ""
+
+# --- sync / trigger ---
+sync_mode: "standalone"
+depth_delay_us: 0
+color_delay_us: 0
+trigger2image_delay_us: 0
+trigger_out_enabled: true
+trigger_out_delay_us: 0
+software_trigger_enabled: true
+frames_per_trigger: 2
+software_trigger_period: 33           # ms
+enable_frame_sync: true
+enable_ptp_config: false              # only for Gemini 335Le
+enable_sync_host_time: true
+time_sync_period: 6.0                 # seconds
+intra_camera_sync_reference: ""       # Start, Middle or End
+
+# --- interleave ---
+interleave_ae_mode: "laser"           # hdr or laser
+interleave_frame_enable: false
+interleave_skip_enable: false
+interleave_skip_index: 1              # 0: skip pattern ir, 1: skip flood ir
+frame_aggregate_mode: "ANY"           # full_frame, color_frame, ANY or disable
+
+# --- interleave HDR params ---
+hdr_index1_laser_control: 1
+hdr_index1_depth_exposure: 1
+hdr_index1_depth_gain: 16
+hdr_index1_ir_brightness: 30
+hdr_index1_ir_ae_max_exposure: 30458
+hdr_index0_laser_control: 1
+hdr_index0_depth_exposure: 7500
+hdr_index0_depth_gain: 16
+hdr_index0_ir_brightness: 90
+hdr_index0_ir_ae_max_exposure: 30458
+
+# --- interleave laser params ---
+laser_index1_laser_control: 0
+laser_index1_depth_exposure: 3000
+laser_index1_depth_gain: 16
+laser_index1_ir_brightness: 60
+laser_index1_ir_ae_max_exposure: 17000
+laser_index0_laser_control: 1
+laser_index0_depth_exposure: 3000
+laser_index0_depth_gain: 16
+laser_index0_ir_brightness: 60
+laser_index0_ir_ae_max_exposure: 30000
+
+# --- misc ---
+log_level: "none"
+log_file_name: ""
+enable_d2c_viewer: false
+diagnostic_period: 1.0
+show_fps_enable: false
+enable_gmsl_trigger: false
+gmsl_trigger_fps: 3000
+
+# --- force IP ---
+force_ip_enable: false
+force_ip_mac: ""
+force_ip_address: "192.168.1.10"
+force_ip_subnet_mask: "255.255.255.0"
+force_ip_gateway: "192.168.1.1"

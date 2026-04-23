@@ -65,17 +65,17 @@ def generate_launch_description():
         Node(
             package='tf2_ros', executable='static_transform_publisher',
             name='tf_l4cd',
-            arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'l4cd_frame'],
+            arguments=['0', '0', '0', '1.57', '1.57', '0', 'base_link', 'l4cd_frame'],
         ),
         Node(
             package='tf2_ros', executable='static_transform_publisher',
             name='tf_l5cx',
-            arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'l5cx_optical_frame'],
+            arguments=['0', '0', '0', '1.57', '1.57', '1.57', 'base_link', 'l5cx_optical_frame'],
         ),
         Node(
             package='tf2_ros', executable='static_transform_publisher',
             name='tf_l7cx',
-            arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'l7cx_optical_frame'],
+            arguments=['0', '0', '0', '1.57', '1.57', '1.57', 'base_link', 'l7cx_optical_frame'],
         ),
 
         # --- RViz2 (옵션) ---

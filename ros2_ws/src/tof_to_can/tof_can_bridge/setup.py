@@ -20,6 +20,7 @@ setup(
     entry_points={
         'console_scripts': [
             'bridge_node = tof_can_bridge.bridge_node:main',
+            'gemini_grid_node = tof_can_bridge.gemini_grid_node:main',
         ],
     },
 )
